@@ -1,1 +1,1 @@
-# IMPLEMENTATION OF TRANSFORMER BASED TEXT TO IMAGE MODELS
+# Implementation of Transformer based Text-to-Image Models
