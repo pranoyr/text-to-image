@@ -6,20 +6,30 @@
 ## Example Usage
 
 ```python
-# Hyperparameters
-batch_size = 2
-h, w = 16, 16  # Image feature map size
-embed_dim = 768
-shuffle_window_size = 2
+    # Hyperparameters
+    batch_size = 1
+    num_tokens = 256
+    transformer_dim = 768
+    shuffle_window_size = 2
 
-# Create random input tokens
-input_tokens = torch.randn(batch_size, h*w, embed_dim)  # Shape: [2, 256, 768]
+    # Create Token-Shuffle layer
+    token_shuffle_layer = TokenShuffleLayer(
+        transformer_dim=transformer_dim, 
+        shuffle_window_size=shuffle_window_size
+    )
 
-# TokenShuffle
-shuffled_tokens = token_shuffle(input_tokens)  # Shape: [2, 64, 768]
+    # Generate random input tokens
+    input_tokens = torch.randn(
+        batch_size, 
+        num_tokens, 
+        transformer_dim
+    )
 
-# TokenUnshuffle
-unshuffled_tokens = token_unshuffle(shuffled_tokens)  # Shape: [2, 256, 768]
+    # Apply Token-Shuffle
+    output_tokens = token_shuffle_layer(input_tokens)
+
+    print("Input tokens shape:", input_tokens.shape)
+    print("Output tokens shape:", output_tokens.shape)
 ```
 
 The TokenShuffle module reduces the sequence length by a factor of s² (where s is the shuffle_window_size) while preserving the essential information through spatial token fusion. In this example, the sequence length is reduced from 256 to 64, enabling more efficient processing of visual tokens.
