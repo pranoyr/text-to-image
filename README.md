@@ -6,6 +6,9 @@
 ## Example Usage
 
 ```python
+from token_shuffle import TokenShuffleLayer
+import torch
+
 # Hyperparameters
 batch_size = 1
 num_tokens = 256
