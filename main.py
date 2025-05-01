@@ -22,7 +22,7 @@ class TokenShuffleLayer(nn.Module):
         # Feature fusion MLP blocks
         self.feature_fusion_mlps = nn.ModuleList([
             nn.Sequential(
-                nn.Linear(self.compressed_dim, self.compressed_dim),
+                nn.Linear(transformer_dim, transformer_dim),
                 nn.GELU()
             ) for _ in range(num_mlp_blocks)
         ])
@@ -47,17 +47,33 @@ class TokenShuffleLayer(nn.Module):
         s = self.shuffle_window_size
         
         # Compress dimension
-        x_compressed = self.input_compression_mlp(x)
+        x = self.input_compression_mlp(x)
 
-        x_grouped = rearrange(x_compressed, 'b (t1 t2) d -> b t1 t2 d', t1=num_tokens // (s * s), t2=s * s)
+        h = w = int(num_tokens ** 0.5)
 
-        x_merged = x_grouped.mean(dim=2)
+        x = rearrange(x, 'b (h w) d -> b h w d', h=h, w=w)
+
+        # Reshape to group local s×s windows
+        # From [b, h, w, d] to [b, h//s, s, w//s, s, d]
+        x = rearrange(x, 'b (h_new s1) (w_new s2) d -> b h_new s1 w_new s2 d', 
+                     s1=s, s2=s)
         
+        # Shuffle the dimensions to get [b, h//s, w//s, s, s, d]
+        x = rearrange(x, 'b h_new s1 w_new s2 d -> b h_new w_new s1 s2 d')
+        
+        # Merge the local window dimensions (s×s) into embedding dimension
+        # From [b, h//s, w//s, s, s, d] to [b, h//s, w//s, (s*s*d)]
+        x = rearrange(x, 'b h_new w_new s1 s2 d -> b h_new w_new (s1 s2 d)')
+        
+        # Flatten spatial dimensions: [b, (h//s)*(w//s), embed_dim]
+        x = rearrange(x, 'b h w d -> b (h w) d')
+
+
         # Apply feature fusion MLPs
         for mlp in self.feature_fusion_mlps:
-            x_merged = mlp(x_merged)
+            x = mlp(x)
         
-        return x_merged
+        return x
     
     def token_unshuffle(self, x):
         """
@@ -69,14 +85,23 @@ class TokenShuffleLayer(nn.Module):
         Returns:
             torch.Tensor: Unshuffled tokens with original token count
         """
-        batch_size, num_merged_tokens, compressed_dim = x.shape
+        batch_size, num_merged_tokens, dim = x.shape
         s = self.shuffle_window_size
 
+        reduced_h, reduced_w = int(num_merged_tokens**0.5), int(num_merged_tokens**0.5)
+
+    
         # Expand tokens
-        x_expanded = x.repeat_interleave(s * s, dim=1)
+        x = rearrange(x, 'b (new_h new_w) (s1 s2 d) -> b new_h new_w s1 s2 d', s1=s, s2=s, new_h=reduced_h, new_w=reduced_w)
+
+        x = rearrange(x, 'b new_h new_w s1 s2 d -> b new_h s1 new_w s2 d')
+
+        x = rearrange(x, 'b new_h s1 new_w s2 d -> b (new_h s1) (new_w s2) d')
+
+        x = rearrange(x, 'b h w d -> b (h w) d')
 
         # Restore original dimension
-        x_restored = self.output_expansion_mlp(x_expanded)
+        x_restored = self.output_expansion_mlp(x)
         
         return x_restored
     
@@ -92,7 +117,7 @@ class TokenShuffleLayer(nn.Module):
         """
         # Shuffle tokens for Transformer computation
         x_shuffled = self.token_shuffle(x)
-        
+
         # Process shuffled tokens (simulated Transformer computation)
         x_processed = x_shuffled  # Replace with actual Transformer processing
         
