@@ -90,8 +90,7 @@ class TokenShuffleLayer(nn.Module):
 
         reduced_h, reduced_w = int(num_merged_tokens**0.5), int(num_merged_tokens**0.5)
 
-    
-        # Expand tokens
+        # Unshuffle the tokens
         x = rearrange(x, 'b (new_h new_w) (s1 s2 d) -> b new_h new_w s1 s2 d', s1=s, s2=s, new_h=reduced_h, new_w=reduced_w)
 
         x = rearrange(x, 'b new_h new_w s1 s2 d -> b new_h s1 new_w s2 d')
@@ -115,13 +114,13 @@ class TokenShuffleLayer(nn.Module):
         Returns:
             torch.Tensor: Processed tokens
         """
-        # Shuffle tokens for Transformer computation
+        # compress input tokens + shuffle
         x_shuffled = self.token_shuffle(x)
 
         # Process shuffled tokens (simulated Transformer computation)
         x_processed = x_shuffled  # Replace with actual Transformer processing
         
-        # Unshuffle tokens back to original count
+        # Unshuffle tokens + restore original dimension
         x_unshuffled = self.token_unshuffle(x_processed)
         
         return x_unshuffled
