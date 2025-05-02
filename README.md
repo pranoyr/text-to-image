@@ -6,14 +6,15 @@
 ## Example Usage
 
 ```python
-from token_shuffle import TokenShuffleLayer
-import torch
-
 # Hyperparameters
 batch_size = 1
 num_tokens = 256
 transformer_dim = 768
 shuffle_window_size = 2
+
+transformer = Encoder(
+    dim=transformer_dim
+)
 
 # Create Token-Shuffle layer
 token_shuffle_layer = TokenShuffleLayer(
@@ -29,7 +30,11 @@ input_tokens = torch.randn(
 )
 
 # Apply Token-Shuffle
-output_tokens = token_shuffle_layer(input_tokens)
+in_tokens = token_shuffle_layer.token_shuffle(input_tokens)
+# Transformer processing
+transformer_out = transformer(in_tokens)
+# Unshuffle tokens
+output_tokens = token_shuffle_layer.token_unshuffle(transformer_out)
 
 print("Input tokens shape:", input_tokens.shape)
 print("Output tokens shape:", output_tokens.shape)

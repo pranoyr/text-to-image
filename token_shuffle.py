@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from einops import rearrange
+from transformer import Encoder
 
 class TokenShuffleLayer(nn.Module):
     def __init__(self, 
@@ -100,31 +101,11 @@ class TokenShuffleLayer(nn.Module):
         x = rearrange(x, 'b h w d -> b (h w) d')
 
         # Restore original dimension
-        x_restored = self.output_expansion_mlp(x)
+        x = self.output_expansion_mlp(x)
         
-        return x_restored
+        return x
     
-    def forward(self, x):
-        """
-        Forward pass through Token-Shuffle
-        
-        Args:
-            x (torch.Tensor): Input tokens
-        
-        Returns:
-            torch.Tensor: Processed tokens
-        """
-        # compress input tokens + shuffle
-        x_shuffled = self.token_shuffle(x)
-
-        # Process shuffled tokens (simulated Transformer computation)
-        x_processed = x_shuffled  # Replace with actual Transformer processing
-        
-        # Unshuffle tokens + restore original dimension
-        x_unshuffled = self.token_unshuffle(x_processed)
-        
-        return x_unshuffled
-
+  
 # Example usage
 def main():
     # Hyperparameters
@@ -132,13 +113,17 @@ def main():
     num_tokens = 256
     transformer_dim = 768
     shuffle_window_size = 2
+
+    transformer = Encoder(
+        dim=transformer_dim
+    )
     
     # Create Token-Shuffle layer
     token_shuffle_layer = TokenShuffleLayer(
         transformer_dim=transformer_dim, 
         shuffle_window_size=shuffle_window_size
     )
-    
+
     # Generate random input tokens
     input_tokens = torch.randn(
         batch_size, 
@@ -147,8 +132,12 @@ def main():
     )
     
     # Apply Token-Shuffle
-    output_tokens = token_shuffle_layer(input_tokens)
-    
+    in_tokens = token_shuffle_layer.token_shuffle(input_tokens)
+    # Transformer processing
+    transformer_out = transformer(in_tokens)
+    # Unshuffle tokens
+    output_tokens = token_shuffle_layer.token_unshuffle(transformer_out)
+
     print("Input tokens shape:", input_tokens.shape)
     print("Output tokens shape:", output_tokens.shape)
 
